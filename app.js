@@ -1,9 +1,29 @@
-const salt = new TextEncoder().encode("SecureVaultSalt");
+let mode = "encrypt";
 
-function passwordStrength(pwd) {
-  if (pwd.length < 6) return "Weak";
-  if (pwd.match(/[A-Z]/) && pwd.match(/[0-9]/)) return "Strong";
-  return "Medium";
+const salt = new TextEncoder().encode("FixedSalt123");
+
+const textEl = document.getElementById("text");
+const passEl = document.getElementById("password");
+const resultEl = document.getElementById("result");
+const outputEl = document.getElementById("output");
+const processBtn = document.getElementById("processBtn");
+const statusIcon = document.getElementById("statusIcon");
+const statusText = document.getElementById("statusText");
+const copiedEl = document.getElementById("copied");
+const switchEl = document.querySelector(".switch");
+const labelEncrypt = document.getElementById("label-encrypt");
+const labelDecrypt = document.getElementById("label-decrypt");
+
+[textEl, passEl].forEach(el =>
+  el.addEventListener("input", () => resultEl.hidden = true)
+);
+
+function toggleMode() {
+  mode = mode === "encrypt" ? "decrypt" : "encrypt";
+  switchEl.classList.toggle("decrypt");
+  labelEncrypt.classList.toggle("active");
+  labelDecrypt.classList.toggle("active");
+  resultEl.hidden = true;
 }
 
 async function getKey(password) {
@@ -44,39 +64,49 @@ async function decrypt(cipher, password) {
   const iv = data.slice(0, 12);
   const encrypted = data.slice(12);
   const key = await getKey(password);
+
   const decrypted = await crypto.subtle.decrypt(
     { name: "AES-GCM", iv },
     key,
     encrypted
   );
+
   return new TextDecoder().decode(decrypted);
 }
 
 async function process() {
-  const mode = document.getElementById("mode").value;
-  const text = document.getElementById("text").value;
-  const password = document.getElementById("password").value;
-
-  document.getElementById("strength").textContent =
-    "Password strength: " + passwordStrength(password);
+  processBtn.disabled = true;
+  copiedEl.style.display = "none";
+  resultEl.classList.remove("invalid", "shake");
 
   try {
-    const output = mode === "encrypt"
-      ? await encrypt(text, password)
-      : await decrypt(text, password);
+    const result = mode === "encrypt"
+      ? await encrypt(textEl.value, passEl.value)
+      : await decrypt(textEl.value, passEl.value);
 
-    document.getElementById("output").textContent = output;
-    document.getElementById("result").hidden = false;
+    statusIcon.textContent = "✔";
+    statusText.textContent = "Success";
+    outputEl.textContent = result;
   } catch {
-    alert("Invalid password or input");
+    statusIcon.textContent = "⚠";
+    statusText.textContent = "Invalid input or password";
+    outputEl.textContent = "";
+    resultEl.classList.add("invalid", "shake");
   }
+
+  resultEl.hidden = false;
+  processBtn.disabled = false;
 }
 
-function clearAll() {
-  text.value = password.value = "";
-  result.hidden = true;
+function resetAll() {
+  textEl.value = "";
+  passEl.value = "";
+  resultEl.hidden = true;
 }
 
 function copy() {
-  navigator.clipboard.writeText(output.textContent);
+  navigator.clipboard.writeText(outputEl.textContent);
+  copiedEl.style.display = "inline";
+
+  setTimeout(() => copiedEl.style.display = "none", 2000);
 }

@@ -3,51 +3,54 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SecureVault</title>
+<title>Secure Text Encrypt / Decrypt</title>
+
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
-<div class="app">
 
-  <aside class="sidebar">
-    <h2>🔐 SecureVault</h2>
-    <nav>
-      <button class="active">Encrypt / Decrypt</button>
-      <button>History</button>
-      <button>Settings</button>
-    </nav>
-  </aside>
+<div class="card">
+  <h1>Secure Text</h1>
+  <p>Encrypt or decrypt your text safely in-browser</p>
 
-  <main class="content">
-    <h1>Encrypt & Decrypt Text</h1>
-    <p class="subtitle">All operations happen locally in your browser</p>
+  <!-- Toggle -->
+  <div class="toggle">
+    <span id="label-encrypt" class="active">Encrypt</span>
+    <div class="switch" onclick="toggleMode()">
+      <div class="knob"></div>
+    </div>
+    <span id="label-decrypt">Decrypt</span>
+  </div>
 
-    <div class="card">
-      <select id="mode">
-        <option value="encrypt">Encrypt</option>
-        <option value="decrypt">Decrypt</option>
-      </select>
+  <div class="field">
+    <label>Text</label>
+    <textarea id="text" placeholder="Enter text here..."></textarea>
+  </div>
 
-      <textarea id="text" placeholder="Enter text here..."></textarea>
+  <div class="field">
+    <label>Password</label>
+    <input type="password" id="password" placeholder="Enter password">
+  </div>
 
-      <input type="password" id="password" placeholder="Password">
-      <div class="strength" id="strength"></div>
+  <button id="processBtn" onclick="process()">Process</button>
+  <button class="reset" onclick="resetAll()">Reset</button>
 
-      <div class="actions">
-        <button onclick="process()">Process</button>
-        <button class="secondary" onclick="clearAll()">Clear</button>
-      </div>
+  <!-- Result -->
+  <div class="result" id="result" hidden>
+    <div class="result-header">
+      <span id="statusIcon"></span>
+      <span id="statusText"></span>
     </div>
 
-    <div class="card result" id="result" hidden>
-      <h3>Result</h3>
-      <pre id="output"></pre>
+    <div class="output" id="output"></div>
+
+    <div class="result-actions">
       <button class="secondary" onclick="copy()">Copy</button>
+      <span class="copied" id="copied">Copied ✓</span>
     </div>
-  </main>
-
+  </div>
 </div>
 
 <script src="app.js"></script>
