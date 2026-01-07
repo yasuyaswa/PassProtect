@@ -3,232 +3,53 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Secure Text Encrypt / Decrypt</title>
-
+<title>SecureVault</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-<style>
-:root {
-  --primary: #6366f1;
-  --secondary: #0f172a;
-  --bg: linear-gradient(135deg, #6366f1, #8b5cf6);
-}
-
-* { box-sizing: border-box; }
-
-body {
-  font-family: 'Inter', sans-serif;
-  background: var(--bg);
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-.card {
-  background: white;
-  width: 100%;
-  max-width: 420px;
-  border-radius: 18px;
-  padding: 28px;
-  box-shadow: 0 25px 50px rgba(0,0,0,.25);
-}
-
-.card h1 {
-  margin: 0 0 6px;
-  font-size: 1.6rem;
-  color: var(--secondary);
-}
-
-.card p {
-  margin-bottom: 20px;
-  color: #64748b;
-  font-size: .9rem;
-}
-
-.field {
-  margin-bottom: 16px;
-}
-
-.field label {
-  display: block;
-  font-size: .75rem;
-  margin-bottom: 6px;
-  color: #475569;
-}
-
-.field input, .field textarea, .field select {
-  width: 100%;
-  padding: 12px 14px;
-  border-radius: 10px;
-  border: 1px solid #e2e8f0;
-  font-size: .95rem;
-  outline: none;
-}
-
-.field textarea {
-  resize: none;
-  min-height: 90px;
-}
-
-.field input:focus, .field textarea:focus, .field select:focus {
-  border-color: var(--primary);
-}
-
-button {
-  width: 100%;
-  border: none;
-  padding: 14px;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  background: var(--primary);
-  color: white;
-  transition: .2s;
-}
-
-button:hover {
-  opacity: .9;
-}
-
-.result {
-  margin-top: 18px;
-  padding: 14px;
-  border-radius: 12px;
-  background: #f1f5f9;
-  font-size: .85rem;
-  word-break: break-all;
-  position: relative;
-}
-
-.copy {
-  position: absolute;
-  right: 12px;
-  top: 12px;
-  font-size: .75rem;
-  cursor: pointer;
-  color: var(--primary);
-}
-</style>
+<link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
+<div class="app">
 
-<div class="card">
-  <h1>Secure Text</h1>
-  <p>Encrypt or decrypt your text safely in-browser</p>
+  <aside class="sidebar">
+    <h2>🔐 SecureVault</h2>
+    <nav>
+      <button class="active">Encrypt / Decrypt</button>
+      <button>History</button>
+      <button>Settings</button>
+    </nav>
+  </aside>
 
-  <div class="field">
-    <label>Mode</label>
-    <select id="mode">
-      <option value="encrypt">Encrypt</option>
-      <option value="decrypt">Decrypt</option>
-    </select>
-  </div>
+  <main class="content">
+    <h1>Encrypt & Decrypt Text</h1>
+    <p class="subtitle">All operations happen locally in your browser</p>
 
-  <div class="field">
-    <label>Text</label>
-    <textarea id="text" placeholder="Enter text here..."></textarea>
-  </div>
+    <div class="card">
+      <select id="mode">
+        <option value="encrypt">Encrypt</option>
+        <option value="decrypt">Decrypt</option>
+      </select>
 
-  <div class="field">
-    <label>Password</label>
-    <input type="password" id="password" placeholder="Enter password">
-  </div>
+      <textarea id="text" placeholder="Enter text here..."></textarea>
 
-  <button onclick="process()">Process</button>
+      <input type="password" id="password" placeholder="Password">
+      <div class="strength" id="strength"></div>
 
-  <div class="result" id="result" hidden>
-    <span class="copy" onclick="copy()">Copy</span>
-    <span id="output"></span>
-  </div>
+      <div class="actions">
+        <button onclick="process()">Process</button>
+        <button class="secondary" onclick="clearAll()">Clear</button>
+      </div>
+    </div>
+
+    <div class="card result" id="result" hidden>
+      <h3>Result</h3>
+      <pre id="output"></pre>
+      <button class="secondary" onclick="copy()">Copy</button>
+    </div>
+  </main>
+
 </div>
 
-<script>
-const salt = new TextEncoder().encode("FixedSalt123");
-
-async function getKey(password) {
-  const enc = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(password),
-    "PBKDF2",
-    false,
-    ["deriveKey"]
-  );
-
-  return crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
-    keyMaterial,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"]
-  );
-}
-
-async function encrypt(text, password) {
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const key = await getKey(password);
-  const encrypted = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    key,
-    new TextEncoder().encode(text)
-  );
-
-  const data = new Uint8Array(iv.length + encrypted.byteLength);
-  data.set(iv);
-  data.set(new Uint8Array(encrypted), iv.length);
-
-  return btoa(String.fromCharCode(...data));
-}
-
-async function decrypt(cipher, password) {
-  const data = Uint8Array.from(atob(cipher), c => c.charCodeAt(0));
-  const iv = data.slice(0, 12);
-  const encrypted = data.slice(12);
-  const key = await getKey(password);
-
-  const decrypted = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv },
-    key,
-    encrypted
-  );
-
-  return new TextDecoder().decode(decrypted);
-}
-
-async function process() {
-  const mode = modeEl.value;
-  const text = textEl.value;
-  const password = passEl.value;
-  const resultBox = resultEl;
-
-  try {
-    const output = mode === "encrypt"
-      ? await encrypt(text, password)
-      : await decrypt(text, password);
-
-    outputEl.textContent = output;
-    resultBox.hidden = false;
-  } catch {
-    outputEl.textContent = "Invalid password or input";
-    resultBox.hidden = false;
-  }
-}
-
-function copy() {
-  navigator.clipboard.writeText(outputEl.textContent);
-  alert("Copied to clipboard");
-}
-
-const modeEl = document.getElementById("mode");
-const textEl = document.getElementById("text");
-const passEl = document.getElementById("password");
-const resultEl = document.getElementById("result");
-const outputEl = document.getElementById("output");
-</script>
-
+<script src="app.js"></script>
 </body>
 </html>
