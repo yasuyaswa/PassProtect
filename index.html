@@ -3,56 +3,145 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Secure Text Encrypt / Decrypt</title>
+<title>Password Hashing Demo (Correct Way)</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+body {
+  font-family: Inter, sans-serif;
+  background: #f1f5f9;
+  display: flex;
+  justify-content: center;
+  padding: 30px;
+}
+
+.card {
+  background: white;
+  width: 100%;
+  max-width: 420px;
+  padding: 24px;
+  border-radius: 14px;
+  box-shadow: 0 15px 35px rgba(0,0,0,.1);
+}
+
+h2 {
+  margin-bottom: 10px;
+}
+
+input, button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+button {
+  background: #6366f1;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+.output {
+  background: #f8fafc;
+  padding: 12px;
+  margin-top: 12px;
+  font-size: .8rem;
+  word-break: break-all;
+}
+
+.status {
+  margin-top: 10px;
+  font-weight: 600;
+}
+.success { color: #16a34a; }
+.error { color: #dc2626; }
+</style>
 </head>
 
 <body>
 
 <div class="card">
-  <h1>Secure Text</h1>
-  <p>Encrypt or decrypt your text safely in-browser</p>
+  <h2>Password Hashing (Correct Way)</h2>
 
-  <!-- Toggle -->
-  <div class="toggle">
-    <span id="label-encrypt" class="active">Encrypt</span>
-    <div class="switch" onclick="toggleMode()">
-      <div class="knob"></div>
-    </div>
-    <span id="label-decrypt">Decrypt</span>
+  <input type="password" id="password" placeholder="Enter password">
+
+  <button onclick="hashPwd()">Hash Password</button>
+
+  <div class="output">
+    <div><strong>Hash:</strong> <span id="hash"></span></div>
+    <div><strong>Salt:</strong> <span id="salt"></span></div>
   </div>
 
-  <div class="field">
-    <label>Text</label>
-    <textarea id="text" placeholder="Enter text here..."></textarea>
-  </div>
+  <button onclick="verifyPwd()">Verify Password</button>
 
-  <div class="field">
-    <label>Password</label>
-    <input type="password" id="password" placeholder="Enter password">
-  </div>
-
-  <button id="processBtn" onclick="process()">Process</button>
-  <button class="reset" onclick="resetAll()">Reset</button>
-
-  <!-- Result -->
-  <div class="result" id="result" hidden>
-    <div class="result-header">
-      <span id="statusIcon"></span>
-      <span id="statusText"></span>
-    </div>
-
-    <div class="output" id="output"></div>
-
-    <div class="result-actions">
-      <button class="secondary" onclick="copy()">Copy</button>
-      <span class="copied" id="copied">Copied ✓</span>
-    </div>
-  </div>
+  <div class="status" id="status"></div>
 </div>
 
-<script src="app.js"></script>
+<script>
+let storedHash = "";
+let storedSalt = "";
+
+async function hashPassword(password, saltBase64 = null) {
+  const encoder = new TextEncoder();
+
+  const salt = saltBase64
+    ? Uint8Array.from(atob(saltBase64), c => c.charCodeAt(0))
+    : crypto.getRandomValues(new Uint8Array(16));
+
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+
+  const hashBuffer = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: salt,
+      iterations: 150000,
+      hash: "SHA-256"
+    },
+    keyMaterial,
+    256
+  );
+
+  return {
+    hash: btoa(String.fromCharCode(...new Uint8Array(hashBuffer))),
+    salt: btoa(String.fromCharCode(...salt))
+  };
+}
+
+async function hashPwd() {
+  const pwd = password.value;
+  const result = await hashPassword(pwd);
+
+  storedHash = result.hash;
+  storedSalt = result.salt;
+
+  document.getElementById("hash").textContent = storedHash;
+  document.getElementById("salt").textContent = storedSalt;
+  status.textContent = "Password hashed & stored";
+  status.className = "status success";
+}
+
+async function verifyPwd() {
+  const pwd = password.value;
+  const result = await hashPassword(pwd, storedSalt);
+
+  if (result.hash === storedHash) {
+    status.textContent = "✔ Password is valid";
+    status.className = "status success";
+  } else {
+    status.textContent = "✖ Invalid password";
+    status.className = "status error";
+  }
+}
+</script>
+
 </body>
 </html>
