@@ -1,30 +1,63 @@
 let mode = "encrypt";
 
-const salt = new TextEncoder().encode("FixedSalt123");
-
 const textEl = document.getElementById("text");
 const passEl = document.getElementById("password");
+const pwdError = document.getElementById("pwdError");
 const resultEl = document.getElementById("result");
 const outputEl = document.getElementById("output");
-const processBtn = document.getElementById("processBtn");
 const statusIcon = document.getElementById("statusIcon");
 const statusText = document.getElementById("statusText");
 const copiedEl = document.getElementById("copied");
-const switchEl = document.querySelector(".switch");
-const labelEncrypt = document.getElementById("label-encrypt");
-const labelDecrypt = document.getElementById("label-decrypt");
+const copyBtn = document.getElementById("copyBtn");
+const downloadBtn = document.getElementById("downloadBtn");
+const switchEl = document.getElementById("modeSwitch");
+const eyeEl = document.getElementById("eye");
 
-[textEl, passEl].forEach(el =>
-  el.addEventListener("input", () => resultEl.hidden = true)
-);
+let clearTimer;
 
+/* Encrypt / Decrypt toggle */
 function toggleMode() {
   mode = mode === "encrypt" ? "decrypt" : "encrypt";
+  switchEl.classList.toggle("encrypt");
   switchEl.classList.toggle("decrypt");
-  labelEncrypt.classList.toggle("active");
-  labelDecrypt.classList.toggle("active");
+  document.getElementById("label-encrypt").classList.toggle("active");
+  document.getElementById("label-decrypt").classList.toggle("active");
   resultEl.hidden = true;
+  restartAutoClear();
 }
+
+/* Password visibility */
+function togglePassword() {
+  const show = passEl.type === "password";
+  passEl.type = show ? "text" : "password";
+  eyeEl.textContent = show ? "🙈" : "👁️";
+  restartAutoClear();
+}
+
+/* Auto clear after 3 minutes of inactivity */
+function startAutoClear() {
+  clearTimeout(clearTimer);
+  clearTimer = setTimeout(() => {
+    resetAll();
+    copyBtn.disabled = true;
+    downloadBtn.disabled = true;
+  }, 180000); // 3 minutes
+}
+
+function restartAutoClear() {
+  startAutoClear();
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  startAutoClear();
+  const resetEvents = ["input", "keydown", "mousedown", "mousemove", "touchstart", "focus"];
+  resetEvents.forEach(evt => {
+    document.addEventListener(evt, restartAutoClear, { passive: true });
+  });
+});
+
+/* Crypto (AES-GCM + PBKDF2 with fixed salt) */
+const salt = new TextEncoder().encode("FixedSalt123"); // For stronger security, prefer per-encryption random salt + store with ciphertext.
 
 async function getKey(password) {
   const keyMaterial = await crypto.subtle.importKey(
@@ -56,6 +89,7 @@ async function encrypt(text, password) {
   const data = new Uint8Array(iv.length + encrypted.byteLength);
   data.set(iv);
   data.set(new Uint8Array(encrypted), iv.length);
+
   return btoa(String.fromCharCode(...data));
 }
 
@@ -74,39 +108,93 @@ async function decrypt(cipher, password) {
   return new TextDecoder().decode(decrypted);
 }
 
+/* Status helpers (green success, red/yellow invalid) */
+function setSuccess(message = "Success") {
+  statusIcon.textContent = "✅";
+  statusText.textContent = message;
+  resultEl.classList.remove("invalid");
+  resultEl.classList.add("success");
+}
+
+function setInvalid(type = "error") {
+  // type: "error" -> ❌ (red), "warn" -> ⚠️ (yellow)
+  statusIcon.textContent = type === "warn" ? "⚠️" : "❌";
+  statusText.textContent = type === "warn" ? "Check the input format" : "Invalid input or password";
+  resultEl.classList.remove("success");
+  resultEl.classList.add("invalid");
+}
+
+/* Process */
 async function process() {
-  processBtn.disabled = true;
-  copiedEl.style.display = "none";
-  resultEl.classList.remove("invalid", "shake");
+  pwdError.textContent = "";
+
+  const pwd = passEl.value || "";
+  if (pwd.length < 3 || pwd.length > 20) {
+    pwdError.textContent = "Password must be 3–20 characters";
+    return;
+  }
 
   try {
     const result = mode === "encrypt"
-      ? await encrypt(textEl.value, passEl.value)
-      : await decrypt(textEl.value, passEl.value);
+      ? await encrypt(textEl.value, pwd)
+      : await decrypt(textEl.value, pwd);
 
-    statusIcon.textContent = "✔";
-    statusText.textContent = "Success";
+    setSuccess();
     outputEl.textContent = result;
-  } catch {
-    statusIcon.textContent = "⚠";
-    statusText.textContent = "Invalid input or password";
-    outputEl.textContent = "";
-    resultEl.classList.add("invalid", "shake");
-  }
 
-  resultEl.hidden = false;
-  processBtn.disabled = false;
+    copyBtn.disabled = false;
+    downloadBtn.disabled = false;
+    resultEl.hidden = false;
+    restartAutoClear();
+  } catch (err) {
+    const isFormatIssue = typeof err?.message === "string" && /decode|atob|format|malformed/i.test(err.message);
+    setInvalid(isFormatIssue ? "warn" : "error");
+    resultEl.hidden = false;
+  }
 }
 
+/* Download */
+function downloadTxt() {
+  const maskedPwd = "#".repeat(passEl.value.length);
+  const content =
+`Mode: ${mode.toUpperCase()}
+Text:
+${textEl.value}
+
+Password:
+${maskedPwd}
+
+Output:
+${outputEl.textContent}`;
+
+  const blob = new Blob([content], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `secure-${mode}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+  restartAutoClear();
+}
+
+/* Copy */
+function copy() {
+  if (!outputEl.textContent) return;
+  navigator.clipboard.writeText(outputEl.textContent);
+  copiedEl.style.display = "inline";
+  setTimeout(() => copiedEl.style.display = "none", 2000);
+  restartAutoClear();
+}
+
+/* Reset */
 function resetAll() {
   textEl.value = "";
   passEl.value = "";
+  outputEl.textContent = "";
   resultEl.hidden = true;
-}
-
-function copy() {
-  navigator.clipboard.writeText(outputEl.textContent);
-  copiedEl.style.display = "inline";
-
-  setTimeout(() => copiedEl.style.display = "none", 2000);
+  statusIcon.textContent = "";
+  statusText.textContent = "";
+  copiedEl.style.display = "none";
+  copyBtn.disabled = true;
+  downloadBtn.disabled = true;
 }
