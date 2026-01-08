@@ -1,56 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Secure Text Encrypt / Decrypt</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Secure</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles.css"/>
 </head>
 
 <body>
 
 <div class="card">
-  <h1>Secure Text</h1>
-  <p>Encrypt or decrypt your text safely in-browser</p>
+  <!-- Header -->
+  <div class="card-header">
+    <h1>🔐 Secure</h1>
+  </div>
 
-  <!-- Toggle -->
+  <!-- Encrypt / Decrypt toggle -->
   <div class="toggle">
     <span id="label-encrypt" class="active">Encrypt</span>
-    <div class="switch" onclick="toggleMode()">
+    <div class="switch encrypt" id="modeSwitch" onclick="toggleMode()" aria-label="Toggle encrypt/decrypt">
       <div class="knob"></div>
     </div>
     <span id="label-decrypt">Decrypt</span>
   </div>
 
+  <!-- Text -->
   <div class="field">
     <label>Text</label>
     <textarea id="text" placeholder="Enter text here..."></textarea>
   </div>
 
-  <div class="field">
+  <!-- Password -->
+  <div class="field password-field">
     <label>Password</label>
-    <input type="password" id="password" placeholder="Enter password">
+    <input type="password" id="password" placeholder="Enter password" />
+    <span class="eye" id="eye" onclick="togglePassword()" aria-label="Show/Hide password">👁️</span>
+    <small id="pwdError"></small>
   </div>
 
-  <button id="processBtn" onclick="process()">Process</button>
-  <button class="reset" onclick="resetAll()">Reset</button>
+  <!-- Actions -->
+  <button id="processBtn" class="btn-decor" onclick="process()">Process</button>
+  <button class="reset btn-decor" onclick="resetAll()">Reset</button>
 
   <!-- Result -->
   <div class="result" id="result" hidden>
     <div class="result-header">
-      <span id="statusIcon"></span>
+      <span id="statusIcon" aria-hidden="true"></span>
       <span id="statusText"></span>
     </div>
 
     <div class="output" id="output"></div>
 
-    <div class="result-actions">
-      <button class="secondary" onclick="copy()">Copy</button>
-      <span class="copied" id="copied">Copied ✓</span>
-    </div>
+    <div class="result-actions"> <button class="btn-small copy-btn" id="copyBtn" onclick="copy()" disabled>Copy</button> <button class="btn-small download-btn" id="downloadBtn" onclick="downloadTxt()" disabled>Download</button> <span class="copied" id="copied">Copied ✓</span> </div>
   </div>
+
 </div>
 
 <script src="app.js"></script>
