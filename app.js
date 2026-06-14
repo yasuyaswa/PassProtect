@@ -101,7 +101,7 @@ function restartAutoClear() { startAutoClear(); }
 
 window.addEventListener('DOMContentLoaded', () => {
   startAutoClear();
-  ['input', 'keydown', 'mousedown', 'touchstart', 'focus'].forEach(evt =>
+  ['input', 'keydown', 'touchstart'].forEach(evt =>
     document.addEventListener(evt, restartAutoClear, { passive: true })
   );
 });
@@ -226,6 +226,8 @@ function copy() {
 
 /* ── Reset ────────────────────────────────────────────── */
 function resetAll() {
+  clearTimeout(clearTimer);
+  clearTimeout(window._warnTimer);
   textEl.value         = '';
   passEl.value         = '';
   pwdError.textContent = '';
@@ -234,6 +236,12 @@ function resetAll() {
   resultEl.classList.remove('success', 'invalid');
   copyBtn.disabled     = true;
   downloadBtn.disabled = true;
-  updateCharCount();
-  updateStrength();
+
+  // Update UI counters directly without restarting the auto-clear timer
+  const n = textEl.value.length;
+  document.getElementById('charCount').textContent = '0 chars';
+  strengthFill.style.width      = '0%';
+  strengthFill.style.background = '';
+  strengthLabel.textContent     = '';
+  strengthLabel.style.color     = '';
 }
